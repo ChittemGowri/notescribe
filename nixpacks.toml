@@ -1,0 +1,12 @@
+git add nixpacks.toml
+git commit -m "add tesseract for Railway"
+git push
+```
+
+---
+
+**Step 3 — Now go to Railway and connect**
+
+Open your browser and go to:
+```
+https://railway.app

@@ -1,0 +1,9 @@
+nano requirements.txt
+```
+Paste this:
+```
+flask
+pytesseract
+pillow
+opencv-python-headless
+numpy
