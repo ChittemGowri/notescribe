@@ -6,7 +6,7 @@ from flask import Flask, request, render_template_string, send_file, redirect
 import os
 from datetime import datetime
 
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+import shutil; pytesseract.pytesseract.tesseract_cmd = shutil.which('tesseract') or '/usr/bin/tesseract'
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
