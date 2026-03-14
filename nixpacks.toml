@@ -1,12 +1,8 @@
-git add nixpacks.toml
-git commit -m "add tesseract for Railway"
-git push
-```
+[phases.setup]
+nixPkgs = ["tesseract", "python311", "gcc"]
 
----
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
 
-**Step 3 — Now go to Railway and connect**
-
-Open your browser and go to:
-```
-https://railway.app
+[start]
+cmd = "python app.py"
