@@ -1,6 +1,13 @@
+
 [phases.setup]
-nixPkgs = ["tesseract", "python311Packages.pip"]
+nixPkgs = ["tesseract"]
+aptPkgs = ["python3-pip", "python3-dev", "gcc"]
 
 [start]
-cmd = "python app.py"
+cmd = " python3 app.py"
+
+
+
+
+
 
