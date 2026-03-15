@@ -248,8 +248,17 @@ def preprocess_image(image_path):
     if w < 2000:
         scale = 2000 / w
         img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    # Remove notebook grid/dot background
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # CLAHE to improve contrast
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    gray = clahe.apply(gray)
+    # Denoise
+    gray = cv2.fastNlMeansDenoising(gray, h=10)
+    # Convert back to color for Google Vision
+    clean = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     processed_path = image_path.rsplit('.', 1)[0] + '_processed.jpg'
-    cv2.imwrite(processed_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cv2.imwrite(processed_path, clean, [cv2.IMWRITE_JPEG_QUALITY, 95])
     return processed_path
 
 def google_vision_ocr(image_path):
@@ -306,3 +315,4 @@ if __name__ == '__main__':
     print("  Open: http://127.0.0.1:5000/gowrishankar\n")
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
