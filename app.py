@@ -1,4 +1,3 @@
-import base64
 import requests
 import cv2
 import numpy as np
@@ -13,7 +12,7 @@ OUTPUT_FOLDER = 'outputs'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-GOOGLE_API_KEY = os.environ.get('GOOGLE_VISION_KEY', '')
+OCR_SPACE_KEY = os.environ.get('OCR_SPACE_KEY', 'K88388838')
 
 HOME_PAGE = '''
 <!DOCTYPE html>
@@ -248,30 +247,39 @@ def preprocess_image(image_path):
     if w < 2000:
         scale = 2000 / w
         img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-    # Remove notebook grid/dot background
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # CLAHE to improve contrast
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     gray = clahe.apply(gray)
-    # Denoise
     gray = cv2.fastNlMeansDenoising(gray, h=10)
-    # Convert back to color for Google Vision
-    clean = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    kernel = np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])
+    gray = cv2.filter2D(gray, -1, kernel)
     processed_path = image_path.rsplit('.', 1)[0] + '_processed.jpg'
-    cv2.imwrite(processed_path, clean, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cv2.imwrite(processed_path, gray, [cv2.IMWRITE_JPEG_QUALITY, 95])
     return processed_path
 
-def google_vision_ocr(image_path):
+def ocr_space(image_path):
     with open(image_path, 'rb') as f:
-        image_data = base64.b64encode(f.read()).decode('utf-8')
-    url = f'https://vision.googleapis.com/v1/images:annotate?key={GOOGLE_API_KEY}'
-    payload = {'requests': [{'image': {'content': image_data}, 'features': [{'type': 'DOCUMENT_TEXT_DETECTION', 'maxResults': 1}]}]}
-    response = requests.post(url, json=payload, timeout=30)
+        response = requests.post(
+            'https://api.ocr.space/parse/image',
+            files={'file': f},
+            data={
+                'apikey': OCR_SPACE_KEY,
+                'language': 'eng',
+                'isOverlayRequired': False,
+                'detectOrientation': True,
+                'scale': True,
+                'isTable': False,
+                'OCREngine': 2,
+            },
+            timeout=60
+        )
     result = response.json()
-    if 'error' in result.get('responses', [{}])[0]:
-        err = result['responses'][0]['error'].get('message', 'Unknown error')
-        raise Exception(f'Google Vision error: {err}')
-    return result['responses'][0].get('fullTextAnnotation', {}).get('text', '')
+    if result.get('IsErroredOnProcessing'):
+        raise Exception(result.get('ErrorMessage', ['Unknown error'])[0])
+    parsed = result.get('ParsedResults', [])
+    if not parsed:
+        return ''
+    return parsed[0].get('ParsedText', '')
 
 @app.route('/')
 def root():
@@ -288,13 +296,11 @@ def convert():
     file = request.files['image']
     if file.filename == '':
         return render_template_string(HOME_PAGE, error="No file selected.")
-    if not GOOGLE_API_KEY:
-        return render_template_string(HOME_PAGE, error="API key not configured.")
     image_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(image_path)
     try:
         processed_path = preprocess_image(image_path)
-        text = google_vision_ocr(processed_path)
+        text = ocr_space(processed_path)
         if not text.strip():
             return render_template_string(HOME_PAGE, error="Could not read text. Try a clearer photo with dark ink on white paper.")
         timestamp = datetime.now().strftime('%d %B %Y, %I:%M %p')
@@ -315,4 +321,3 @@ if __name__ == '__main__':
     print("  Open: http://127.0.0.1:5000/gowrishankar\n")
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
