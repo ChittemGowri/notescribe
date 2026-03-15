@@ -1,5 +1,1 @@
-nano Procfile
-```
-Paste this:
-```
 web: python app.py
